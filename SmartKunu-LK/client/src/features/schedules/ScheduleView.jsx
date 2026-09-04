@@ -1,96 +1,62 @@
 import React, { useState, useMemo } from 'react';
-import { Calendar, Filter, AlertCircle, CheckCircle2, MapPin, Truck, RefreshCw, Info } from 'lucide-react';
+import Legend from '../../components/Legend';
+import { 
+  Filter, 
+  RotateCcw, 
+  MapPin, 
+  Calendar, 
+  Truck, 
+  CheckCircle2, 
+  AlertCircle, 
+  Search,
+  Check
+} from 'lucide-react';
 
-const STATIC_SCHEDULES = [
+const SCHEDULE_DATASET = [
   {
     id: 1,
-    council: 'Colombo Municipal Council',
+    municipality: 'Colombo Municipal Council',
     ward: 'Colombo 03 - Kollupitiya',
-    category: 'Organic',
-    pickupDays: 'Mon, Wed, Fri',
-    timeWindow: '06:00 AM - 09:00 AM',
-    routeCode: 'CMC-ROUTE-C03A',
-    guideline: 'CMC will reject mixed polythene bags. All organic food waste must be placed in green bins or biodegradable bags.',
+    wasteCategory: 'Perishable Organic',
+    pickupDates: 'Every Monday & Thursday',
+    routeInfo: 'Galle Road Corridor',
+    guidelines: 'CMC will reject mixed polythene bags',
   },
   {
     id: 2,
-    council: 'Colombo Municipal Council',
-    ward: 'Colombo 03 - Kollupitiya',
-    category: 'Plastics',
-    pickupDays: 'Tuesdays & Saturdays',
-    timeWindow: '07:00 AM - 11:00 AM',
-    routeCode: 'CMC-ROUTE-C03B',
-    guideline: 'Empty and rinse plastic containers. PET bottles must be crushed prior to handover.',
+    municipality: 'Colombo Municipal Council',
+    ward: 'Colombo 07 - Cinnamon Gardens',
+    wasteCategory: 'Recyclable Plastics',
+    pickupDates: 'Every Wednesday',
+    routeInfo: 'Dharmapala Mawatha Sector',
+    guidelines: 'Clean & dry plastics only',
   },
   {
     id: 3,
-    council: 'Colombo Municipal Council',
-    ward: 'Colombo 07 - Cinnamon Gardens',
-    category: 'Paper',
-    pickupDays: 'Thursdays Only',
-    timeWindow: '08:00 AM - 12:00 PM',
-    routeCode: 'CMC-ROUTE-C07P',
-    guideline: 'Flatten cardboard boxes and tie securely in newspaper bundles. Wet paper will not be collected.',
+    municipality: 'Dehiwala-Mount Lavinia MC',
+    ward: 'Dehiwala Ward 4',
+    wasteCategory: 'Paper/Cardboard',
+    pickupDates: 'Every Tuesday',
+    routeInfo: 'Vandervort Place & Station Rd',
+    guidelines: 'Flatten all cardboard cartons',
   },
   {
     id: 4,
-    council: 'Dehiwala-Mount Lavinia MC',
-    ward: 'Dehiwala Ward 4 - Nedimala',
-    category: 'Organic',
-    pickupDays: 'Daily (Mon - Sat)',
-    timeWindow: '05:30 AM - 08:30 AM',
-    routeCode: 'DMC-ROUTE-W04',
-    guideline: 'Collection truck will sound horn twice. Keep wet food waste separate from garden cuttings.',
+    municipality: 'Dehiwala-Mount Lavinia MC',
+    ward: 'Dehiwala Ward 4',
+    wasteCategory: 'Electronic Waste',
+    pickupDates: 'Last Friday of the month',
+    routeInfo: 'Ward 4 Community Drop',
+    guidelines: 'Includes appliances, batteries & scrap metal',
   },
   {
     id: 5,
-    council: 'Dehiwala-Mount Lavinia MC',
-    ward: 'Dehiwala Ward 4 - Nedimala',
-    category: 'E-Waste',
-    pickupDays: '1st & 3rd Sunday of Month',
-    timeWindow: '09:00 AM - 01:00 PM',
-    routeCode: 'DMC-SPECIAL-EW',
-    guideline: 'Electronic items, battery cells, and CRT monitors must be handed directly to crew driver. Do not leave on curb.',
-  },
-  {
-    id: 6,
-    council: 'Sri Jayawardenepura Kotte MC',
-    ward: 'Kotte Ward 2 - Rajagiriya',
-    category: 'Plastics',
-    pickupDays: 'Wednesdays Only',
-    timeWindow: '06:30 AM - 10:00 AM',
-    routeCode: 'KOT-ROUTE-R02',
-    guideline: 'Poly-sacks mandatory for high-density polyethylene (HDPE). No sharp items inside plastic bags.',
-  },
-  {
-    id: 7,
-    council: 'Sri Jayawardenepura Kotte MC',
-    ward: 'Kotte Ward 2 - Rajagiriya',
-    category: 'Organic',
-    pickupDays: 'Mon, Tue, Thu, Sat',
-    timeWindow: '06:00 AM - 09:30 AM',
-    routeCode: 'KOT-ROUTE-R02A',
-    guideline: 'Home compost bin overflows must be sealed tightly. Strict prohibition on construction debris.',
-  },
-  {
-    id: 8,
-    council: 'Kandy Municipal Council',
-    ward: 'Kandy Central Ward 1',
-    category: 'E-Waste',
-    pickupDays: 'Last Saturday of Month',
-    timeWindow: '08:00 AM - 12:00 PM',
-    routeCode: 'KMC-EWASTE-C01',
-    guideline: 'Fluorescent tubes and lithium batteries must be wrapped in bubble wrap for safe municipal recycling.',
-  },
-  {
-    id: 9,
-    council: 'Kandy Municipal Council',
-    ward: 'Kandy Central Ward 1',
-    category: 'Paper',
-    pickupDays: 'Tuesdays Only',
-    timeWindow: '07:00 AM - 10:30 AM',
-    routeCode: 'KMC-PAPER-C01',
-    guideline: 'Ensure old newspapers and textbooks are bundled with jute string.',
+    municipality: 'Kaduwela Municipal Council',
+    ward: 'Battaramulla Ward 2',
+    wasteCategory: 'Perishable Organic',
+    pickupDates: 'Monday, Wednesday, Friday',
+    routeInfo: 'Main Road Zone',
+    guidelines: 'Only biodegradable waste collected',
   },
 ];
 
@@ -98,81 +64,112 @@ const WARD_OPTIONS = [
   'All Wards',
   'Colombo 03 - Kollupitiya',
   'Colombo 07 - Cinnamon Gardens',
-  'Dehiwala Ward 4 - Nedimala',
-  'Kotte Ward 2 - Rajagiriya',
-  'Kandy Central Ward 1',
+  'Dehiwala Ward 4',
+  'Battaramulla Ward 2',
 ];
 
-const CATEGORY_OPTIONS = ['All Categories', 'Organic', 'Plastics', 'Paper', 'E-Waste'];
+const CATEGORY_OPTIONS = [
+  'All Categories',
+  'Perishable Organic',
+  'Recyclable Plastics',
+  'Paper/Cardboard',
+  'Electronic Waste',
+];
 
 export default function ScheduleView() {
   const [selectedWard, setSelectedWard] = useState('All Wards');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
 
-  // Filter schedules based on selected Ward and Category dropdowns
+  // Filter schedules based on active dropdown selections
   const filteredSchedules = useMemo(() => {
-    return STATIC_SCHEDULES.filter((item) => {
+    return SCHEDULE_DATASET.filter((item) => {
       const matchWard =
         selectedWard === 'All Wards' || item.ward.toLowerCase() === selectedWard.toLowerCase();
       const matchCategory =
         selectedCategory === 'All Categories' ||
-        item.category.toLowerCase() === selectedCategory.toLowerCase();
+        item.wasteCategory.toLowerCase() === selectedCategory.toLowerCase();
       return matchWard && matchCategory;
     });
   }, [selectedWard, selectedCategory]);
 
-  const handleResetFilters = () => {
+  const handleReset = () => {
     setSelectedWard('All Wards');
     setSelectedCategory('All Categories');
   };
 
+  // CEA Color badge mapping helper
   const getCategoryBadgeClass = (category) => {
     switch (category) {
-      case 'Organic':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-300';
-      case 'Plastics':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 'Paper':
-        return 'bg-amber-100 text-amber-800 border-amber-300';
-      case 'E-Waste':
-        return 'bg-purple-100 text-purple-800 border-purple-300';
+      case 'Perishable Organic':
+        return 'bg-emerald-600 text-white border-emerald-700';
+      case 'Recyclable Plastics':
+        return 'bg-orange-500 text-white border-orange-600';
+      case 'Paper/Cardboard':
+        return 'bg-blue-600 text-white border-blue-700';
+      case 'Electronic Waste':
+        return 'bg-amber-800 text-white border-amber-900';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+        return 'bg-slate-600 text-white border-slate-700';
     }
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-8">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-emerald-800 to-teal-900 text-white rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
-        <div className="relative z-10 max-w-3xl space-y-3">
-          <div className="inline-flex items-center gap-2 bg-emerald-700/60 text-emerald-200 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-500/40">
-            <Truck className="h-3.5 w-3.5" />
-            <span>Official Collection Timetable</span>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* 1. Problem & Solution Context Banner */}
+      <div className="bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-xl border border-emerald-800/50 space-y-6">
+        <div className="flex items-center gap-3">
+          <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">
+            Public Health & Civic Action Initiative
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-emerald-800/60">
+          {/* Problem Block */}
+          <div className="bg-red-950/40 border border-red-800/40 rounded-xl p-5 space-y-2">
+            <h2 className="text-red-400 font-bold text-base flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-400" />
+              The Problem
+            </h2>
+            <p className="text-slate-200 text-xs sm:text-sm leading-relaxed">
+              Uncollected bulk waste in suburban councils like Dehiwala often ends up illegally dumped on roadsides, trapping stagnant water and creating dengue mosquito breeding grounds during monsoons.
+            </p>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-            Ward Waste Collection Schedule
-          </h1>
-          <p className="text-emerald-100 text-sm sm:text-base leading-relaxed">
-            Select your Municipal Council ward and waste category below to find exact pickup days,
-            route codes, and municipal compliance guidelines.
-          </p>
+
+          {/* Solution Block */}
+          <div className="bg-emerald-950/40 border border-emerald-700/50 rounded-xl p-5 space-y-2">
+            <h2 className="text-emerald-300 font-bold text-base flex items-center gap-2">
+              <Check className="h-5 w-5 text-emerald-400" />
+              The Solution
+            </h2>
+            <p className="text-slate-200 text-xs sm:text-sm leading-relaxed">
+              A rapid-response portal that gives residents a searchable municipal timetable and a direct channel to report missed pickups and illegal dumping.
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Filter Controls Card */}
-      <div className="bg-white rounded-xl shadow-md border border-slate-200 p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-2 text-slate-800 font-bold text-lg">
-            <Filter className="h-5 w-5 text-emerald-600" />
-            <h2>Interactive Schedule Filters</h2>
+      {/* 2. CEA Waste Segregation Legend Component */}
+      <Legend />
+
+      {/* 3. Interactive Filter Controls Card */}
+      <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-emerald-100 rounded-lg text-emerald-700">
+              <Filter className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Schedule Search & Filter</h2>
+              <p className="text-xs text-slate-500">Filter collection routes by Municipal Ward or Waste Category</p>
+            </div>
           </div>
+
           {(selectedWard !== 'All Wards' || selectedCategory !== 'All Categories') && (
             <button
-              onClick={handleResetFilters}
-              className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-emerald-700 font-medium cursor-pointer self-start sm:self-auto"
+              onClick={handleReset}
+              className="inline-flex items-center gap-1.5 text-xs text-emerald-700 hover:text-emerald-900 font-bold bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-2 rounded-lg transition-colors cursor-pointer self-start sm:self-auto"
             >
-              <RefreshCw className="h-3.5 w-3.5" />
+              <RotateCcw className="h-3.5 w-3.5" />
               Reset Filters
             </button>
           )}
@@ -180,15 +177,15 @@ export default function ScheduleView() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Dropdown 1: Municipal Council / Ward */}
-          <div className="space-y-2">
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
               Municipal Council / Ward
             </label>
             <div className="relative">
               <select
                 value={selectedWard}
                 onChange={(e) => setSelectedWard(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 p-3 pr-8 font-medium appearance-none transition-all cursor-pointer"
+                className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 p-3 pr-10 font-medium cursor-pointer appearance-none transition-all"
               >
                 {WARD_OPTIONS.map((ward) => (
                   <option key={ward} value={ward}>
@@ -201,15 +198,15 @@ export default function ScheduleView() {
           </div>
 
           {/* Dropdown 2: Waste Category */}
-          <div className="space-y-2">
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-              Waste Category
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+              Waste Category (CEA Standard)
             </label>
             <div className="relative">
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 p-3 pr-8 font-medium appearance-none transition-all cursor-pointer"
+                className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 p-3 pr-10 font-medium cursor-pointer appearance-none transition-all"
               >
                 {CATEGORY_OPTIONS.map((cat) => (
                   <option key={cat} value={cat}>
@@ -223,86 +220,86 @@ export default function ScheduleView() {
         </div>
       </div>
 
-      {/* Segregation Guideline Alert Banner */}
-      <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm flex items-start gap-3">
-        <AlertCircle className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
-        <div className="space-y-1">
-          <h3 className="text-amber-900 font-bold text-sm">Important Municipal Rejection Notice</h3>
-          <p className="text-amber-800 text-xs sm:text-sm leading-relaxed">
-            <span className="font-semibold">CMC and regional councils will reject mixed polythene bags</span>. 
-            All citizens are requested to strictly segregate household waste into designated color bins (Green for Organic, Blue for Plastics, Yellow for Paper).
-          </p>
-        </div>
+      {/* 4. Results Count Header */}
+      <div className="flex items-center justify-between px-1">
+        <span className="text-sm font-bold text-slate-700">
+          Showing {filteredSchedules.length} of {SCHEDULE_DATASET.length} schedules
+        </span>
+        <span className="text-xs text-slate-500">Official Municipal Timetables</span>
       </div>
 
-      {/* Schedules Table */}
-      <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
-        <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-          <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-            Displaying {filteredSchedules.length} Collection Schedule{filteredSchedules.length !== 1 ? 's' : ''}
-          </span>
-          <span className="text-xs text-slate-500 font-medium">Updated Daily</span>
-        </div>
-
+      {/* 5. Dynamic Responsive Schedule Table & Cards */}
+      <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
         {filteredSchedules.length === 0 ? (
-          <div className="p-12 text-center space-y-3">
-            <Info className="h-10 w-10 text-slate-300 mx-auto" />
-            <p className="text-slate-600 font-medium">No collection schedules match your filter selection.</p>
+          <div className="p-12 text-center space-y-4">
+            <Search className="h-12 w-12 text-slate-300 mx-auto" />
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-slate-800">No matching collection schedules found</h3>
+              <p className="text-xs text-slate-500">
+                Try selecting a different ward or category, or clear your search filters.
+              </p>
+            </div>
             <button
-              onClick={handleResetFilters}
-              className="text-xs text-emerald-700 hover:underline font-semibold"
+              onClick={handleReset}
+              className="inline-flex items-center gap-2 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-4 py-2 rounded-lg transition-colors cursor-pointer"
             >
-              Clear filters to view all schedules
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset All Filters
             </button>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-100 text-slate-700 text-xs uppercase font-bold tracking-wider border-b border-slate-200">
-                  <th className="py-3.5 px-4 sm:px-6">Municipal Ward / Council</th>
-                  <th className="py-3.5 px-4">Waste Category</th>
-                  <th className="py-3.5 px-4">Pickup Days & Window</th>
-                  <th className="py-3.5 px-4">Route Code</th>
-                  <th className="py-3.5 px-4 sm:px-6">Segregation Guideline</th>
+                <tr className="bg-slate-900 text-white text-xs uppercase font-bold tracking-wider">
+                  <th className="py-4 px-6">Council & Ward</th>
+                  <th className="py-4 px-4">Waste Category</th>
+                  <th className="py-4 px-4">Pickup Days</th>
+                  <th className="py-4 px-4">Truck Route</th>
+                  <th className="py-4 px-6">Segregation Rules</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 text-sm">
                 {filteredSchedules.map((schedule) => (
-                  <tr key={schedule.id} className="hover:bg-emerald-50/40 transition-colors">
-                    <td className="py-4 px-4 sm:px-6 font-semibold text-slate-900">
-                      <div>{schedule.ward}</div>
-                      <div className="text-xs text-slate-500 font-normal">{schedule.council}</div>
+                  <tr key={schedule.id} className="hover:bg-slate-50 transition-colors">
+                    {/* Column 1: Council & Ward */}
+                    <td className="py-4 px-6">
+                      <div className="font-bold text-slate-900 text-base">{schedule.ward}</div>
+                      <div className="text-xs text-slate-500 font-medium">{schedule.municipality}</div>
                     </td>
 
+                    {/* Column 2: Waste Category */}
                     <td className="py-4 px-4">
                       <span
-                        className={`inline-block px-2.5 py-1 text-xs font-semibold rounded-full border ${getCategoryBadgeClass(
-                          schedule.category
+                        className={`inline-block px-3 py-1 text-xs font-bold rounded-lg border shadow-sm ${getCategoryBadgeClass(
+                          schedule.wasteCategory
                         )}`}
                       >
-                        {schedule.category}
+                        {schedule.wasteCategory}
                       </span>
                     </td>
 
+                    {/* Column 3: Pickup Days */}
                     <td className="py-4 px-4">
-                      <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5 text-emerald-600" />
-                        {schedule.pickupDays}
+                      <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                        <Calendar className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                        <span>{schedule.pickupDates}</span>
                       </div>
-                      <div className="text-xs text-slate-500 mt-0.5">{schedule.timeWindow}</div>
                     </td>
 
+                    {/* Column 4: Truck Route */}
                     <td className="py-4 px-4">
-                      <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-300 font-semibold">
-                        {schedule.routeCode}
-                      </span>
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-100 px-2.5 py-1.5 rounded-md border border-slate-300 max-w-fit">
+                        <Truck className="h-3.5 w-3.5 text-slate-500 flex-shrink-0" />
+                        <span>{schedule.routeInfo}</span>
+                      </div>
                     </td>
 
-                    <td className="py-4 px-4 sm:px-6 text-xs text-slate-700 leading-relaxed max-w-xs">
+                    {/* Column 5: Segregation Rules */}
+                    <td className="py-4 px-6 text-xs text-slate-700 font-medium leading-relaxed max-w-xs">
                       <div className="flex items-start gap-1.5">
                         <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-                        <span>{schedule.guideline}</span>
+                        <span>{schedule.guidelines}</span>
                       </div>
                     </td>
                   </tr>
