@@ -642,31 +642,29 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\CHAMA COMPUTERS\\.nuget\\packages\\": {},
+    "C:\\Users\\abhis\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\Sef-09-minihackathon\\SmartKunu-LK\\server\\SmartKunu.Server.csproj",
+      "projectUniqueName": "C:\\Users\\abhis\\Desktop\\SLIIT\\Y3S1\\Software Engineering Frameworks\\Assignment\\Hackathon\\Sef-09-minihackathon\\SmartKunu-LK\\server\\SmartKunu.Server.csproj",
       "projectName": "SmartKunu.Server",
-      "projectPath": "D:\\Sef-09-minihackathon\\SmartKunu-LK\\server\\SmartKunu.Server.csproj",
-      "packagesPath": "C:\\Users\\CHAMA COMPUTERS\\.nuget\\packages\\",
-      "outputPath": "D:\\Sef-09-minihackathon\\SmartKunu-LK\\server\\obj\\",
+      "projectPath": "C:\\Users\\abhis\\Desktop\\SLIIT\\Y3S1\\Software Engineering Frameworks\\Assignment\\Hackathon\\Sef-09-minihackathon\\SmartKunu-LK\\server\\SmartKunu.Server.csproj",
+      "packagesPath": "C:\\Users\\abhis\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\abhis\\Desktop\\SLIIT\\Y3S1\\Software Engineering Frameworks\\Assignment\\Hackathon\\Sef-09-minihackathon\\SmartKunu-LK\\server\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\CHAMA COMPUTERS\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        "C:\\Users\\abhis\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
       ],
       "sources": {
-        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {

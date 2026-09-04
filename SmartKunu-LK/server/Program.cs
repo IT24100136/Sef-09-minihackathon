@@ -19,7 +19,6 @@ builder.Services.AddCors(options =>
 // Register AppDbContext with PostgreSQL (Neon Database)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
 // Add Swagger/OpenAPI services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -63,6 +62,7 @@ app.MapPost("/api/reports", async (CreateReportDto dto, AppDbContext db) =>
 {
     var newReport = new Report
     {
+        Id = Random.Shared.Next(1, 10000),
         ReporterName = dto.ReporterName,
         MobileNumber = dto.MobileNumber,
         Ward = dto.Ward,
