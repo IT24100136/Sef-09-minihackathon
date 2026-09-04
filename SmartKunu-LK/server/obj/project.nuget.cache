@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "dgSpecHash": "2rNJdJLtYeQ=",
+  "success": true,
+  "projectFilePath": "D:\\Sef-09-minihackathon\\SmartKunu-LK\\server\\SmartKunu.Server.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\CHAMA COMPUTERS\\.nuget\\packages\\microsoft.entityframeworkcore\\9.0.2\\microsoft.entityframeworkcore.9.0.2.nupkg.sha512",
+    "C:\\Users\\CHAMA COMPUTERS\\.nuget\\packages\\microsoft.entityframeworkcore.abstractions\\9.0.2\\microsoft.entityframeworkcore.abstractions.9.0.2.nupkg.sha512",
+    "C:\\Users\\CHAMA COMPUTERS\\.nuget\\packages\\microsoft.entityframeworkcore.analyzers\\9.0.2\\microsoft.entityframeworkcore.analyzers.9.0.2.nupkg.sha512",
+    "C:\\Users\\CHAMA COMPUTERS\\.nuget\\packages\\microsoft.entityframeworkcore.inmemory\\9.0.2\\microsoft.entityframeworkcore.inmemory.9.0.2.nupkg.sha512"
+  ],
+  "logs": []
+}
