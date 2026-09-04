@@ -18,7 +18,8 @@ export const submitReportApi = async (reportData) => {
 
 export const fetchReportsApi = async () => {
   const response = await api.get('/reports');
-  return response.data;
+  const d = response.data;
+  return Array.isArray(d) ? d : (d?.value || []);
 };
 
 export const updateReportApi = async (id, updateData) => {
@@ -34,7 +35,8 @@ export const deleteReportApi = async (id) => {
 // Schedules API Helpers
 export const fetchSchedulesApi = async () => {
   const response = await api.get('/schedules');
-  return response.data;
+  const d = response.data;
+  return Array.isArray(d) ? d : (d?.value || []);
 };
 
 export const createScheduleApi = async (scheduleData) => {
