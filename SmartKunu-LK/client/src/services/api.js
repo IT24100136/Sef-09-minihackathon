@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+// Live deployed Render API URL as default fallback
+const RENDER_BACKEND_URL = 'https://sef-09-minihackathon.onrender.com/api';
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_URL || RENDER_BACKEND_URL,
   headers: {
     'Content-Type': 'application/json',
   },
