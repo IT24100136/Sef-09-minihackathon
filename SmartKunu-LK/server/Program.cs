@@ -1,65 +1,113 @@
-using Microsoft.EntityFrameworkCore;
-using SmartKunu.Server.Data;
+using SmartKunu.Server.DTOs;
 using SmartKunu.Server.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseInMemoryDatabase("SmartKunuDb"));
-
-// Configure CORS for local frontend requests
+// Configure CORS: Add a policy named "AllowFrontend" for local React integration
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowLocalFrontend", policy =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173")
-              .AllowAnyHeader()
+        policy.AllowAnyOrigin()
               .AllowAnyMethod()
-              .AllowCredentials();
+              .AllowAnyHeader();
     });
 });
 
+// Add Swagger/OpenAPI services
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Member 4 will register AppDbContext here
+
 var app = builder.Build();
 
-app.UseCors("AllowLocalFrontend");
+// Enable Swagger UI and CORS
+app.UseSwagger();
+app.UseSwaggerUI();
 
-// Health check endpoint
-app.MapGet("/", () => Results.Ok(new { status = "Online", service = "SmartKunu-LK Web API", version = "1.0.0" }));
+app.UseCors("AllowFrontend");
 
-// GET /api/reports - Fetch all complaints/reports
-app.MapGet("/api/reports", async (AppDbContext db) =>
+// Mock Schedules Dataset
+var mockSchedules = new List<Schedule>
 {
-    var reports = await db.Reports.OrderByDescending(r => r.CreatedAt).ToListAsync();
-    return Results.Ok(reports);
-});
-
-// POST /api/reports - Create a new complaint report
-app.MapPost("/api/reports", async (CreateReportDto dto, AppDbContext db) =>
-{
-    if (string.IsNullOrWhiteSpace(dto.ReporterName) ||
-        string.IsNullOrWhiteSpace(dto.MobileNumber) ||
-        string.IsNullOrWhiteSpace(dto.WardName) ||
-        string.IsNullOrWhiteSpace(dto.HazardCategory) ||
-        string.IsNullOrWhiteSpace(dto.Description))
+    new Schedule
     {
-        return Results.BadRequest(new { message = "All report fields are required." });
+        Id = 1,
+        Municipality = "Colombo Municipal Council",
+        Ward = "Colombo 03 - Kollupitiya",
+        WasteCategory = "Perishable Organic",
+        PickupDates = "Every Monday & Thursday",
+        RouteInfo = "Galle Road Corridor",
+        Guidelines = "CMC will reject mixed polythene bags"
+    },
+    new Schedule
+    {
+        Id = 2,
+        Municipality = "Colombo Municipal Council",
+        Ward = "Colombo 07 - Cinnamon Gardens",
+        WasteCategory = "Recyclable Plastics",
+        PickupDates = "Every Wednesday",
+        RouteInfo = "Dharmapala Mawatha Sector",
+        Guidelines = "Clean & dry plastics only"
+    },
+    new Schedule
+    {
+        Id = 3,
+        Municipality = "Dehiwala-Mount Lavinia MC",
+        Ward = "Dehiwala Ward 4",
+        WasteCategory = "Paper/Cardboard",
+        PickupDates = "Every Tuesday",
+        RouteInfo = "Vandervort Place & Station Rd",
+        Guidelines = "Flatten all cardboard cartons"
+    },
+    new Schedule
+    {
+        Id = 4,
+        Municipality = "Dehiwala-Mount Lavinia MC",
+        Ward = "Dehiwala Ward 4",
+        WasteCategory = "Electronic Waste",
+        PickupDates = "Last Friday of the month",
+        RouteInfo = "Ward 4 Community Drop",
+        Guidelines = "Includes appliances, batteries & scrap metal"
+    },
+    new Schedule
+    {
+        Id = 5,
+        Municipality = "Kaduwela Municipal Council",
+        Ward = "Battaramulla Ward 2",
+        WasteCategory = "Perishable Organic",
+        PickupDates = "Monday, Wednesday, Friday",
+        RouteInfo = "Main Road Zone",
+        Guidelines = "Only biodegradable waste collected"
     }
+};
 
-    var report = new Report
+// Endpoint 1: GET /api/schedules
+app.MapGet("/api/schedules", () =>
+{
+    return Results.Ok(mockSchedules);
+})
+.WithName("GetSchedules");
+
+// Endpoint 2: POST /api/reports
+app.MapPost("/api/reports", (CreateReportDto dto) =>
+{
+    var newReport = new Report
     {
+        Id = Random.Shared.Next(1, 10000),
         ReporterName = dto.ReporterName,
         MobileNumber = dto.MobileNumber,
-        WardName = dto.WardName,
-        HazardCategory = dto.HazardCategory,
+        Ward = dto.Ward,
+        WasteCategory = dto.WasteCategory,
         Description = dto.Description,
         CreatedAt = DateTime.UtcNow
     };
 
-    db.Reports.Add(report);
-    await db.SaveChangesAsync();
+    // Member 4 will save to AppDbContext here
 
-    return Results.Created($"/api/reports/{report.Id}", report);
-});
+    return Results.Created($"/api/reports/{newReport.Id}", newReport);
+})
+.WithName("CreateReport");
 
 app.Run();
