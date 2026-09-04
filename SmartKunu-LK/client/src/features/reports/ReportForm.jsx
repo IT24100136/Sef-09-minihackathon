@@ -72,12 +72,12 @@ export default function ReportForm() {
     };
 
     try {
-      // POST request to backend API
-      await api.post('/reports', {
+      // POST request matching ASP.NET Core CreateReportDto property names
+      const response = await api.post('/reports', {
         reporterName: data.reporterName,
         mobileNumber: data.mobileNumber,
-        wardName: data.ward,
-        hazardCategory: data.wasteCategory,
+        ward: data.ward,
+        wasteCategory: data.wasteCategory,
         description: data.description,
       });
 
@@ -85,14 +85,19 @@ export default function ReportForm() {
         type: 'success',
         message: 'Report submitted successfully to the municipal database!',
       });
-      setActiveComplaints((prev) => [newReportObj, ...prev]);
+
+      const serverReport = {
+        ...newReportObj,
+        id: response.data?.id || newReportObj.id,
+      };
+
+      setActiveComplaints((prev) => [serverReport, ...prev]);
       reset();
     } catch (error) {
-      console.warn('API connection offline or error encountered. Operating in local demo mode:', error);
-      // Fallback for hackathon demo mode: still prepend to activeComplaints
+      console.warn('API connection offline or payload error. Operating in local fallback mode:', error);
       setSubmitStatus({
         type: 'warning',
-        message: 'Server offline / local demo mode: Report saved locally to active complaints feed.',
+        message: 'Server connection issue: Report saved locally to active complaints feed.',
       });
       setActiveComplaints((prev) => [newReportObj, ...prev]);
       reset();

@@ -1,29 +1,31 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\abhis\\Desktop\\SLIIT\\Y3S1\\Software Engineering Frameworks\\Assignment\\Hackathon\\Sef-09-minihackathon\\SmartKunu-LK\\server\\SmartKunu.Server.csproj": {}
+    "D:\\Sef-09-minihackathon\\SmartKunu-LK\\server\\SmartKunu.Server.csproj": {}
   },
   "projects": {
-    "C:\\Users\\abhis\\Desktop\\SLIIT\\Y3S1\\Software Engineering Frameworks\\Assignment\\Hackathon\\Sef-09-minihackathon\\SmartKunu-LK\\server\\SmartKunu.Server.csproj": {
+    "D:\\Sef-09-minihackathon\\SmartKunu-LK\\server\\SmartKunu.Server.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\abhis\\Desktop\\SLIIT\\Y3S1\\Software Engineering Frameworks\\Assignment\\Hackathon\\Sef-09-minihackathon\\SmartKunu-LK\\server\\SmartKunu.Server.csproj",
+        "projectUniqueName": "D:\\Sef-09-minihackathon\\SmartKunu-LK\\server\\SmartKunu.Server.csproj",
         "projectName": "SmartKunu.Server",
-        "projectPath": "C:\\Users\\abhis\\Desktop\\SLIIT\\Y3S1\\Software Engineering Frameworks\\Assignment\\Hackathon\\Sef-09-minihackathon\\SmartKunu-LK\\server\\SmartKunu.Server.csproj",
-        "packagesPath": "C:\\Users\\abhis\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\abhis\\Desktop\\SLIIT\\Y3S1\\Software Engineering Frameworks\\Assignment\\Hackathon\\Sef-09-minihackathon\\SmartKunu-LK\\server\\obj\\",
+        "projectPath": "D:\\Sef-09-minihackathon\\SmartKunu-LK\\server\\SmartKunu.Server.csproj",
+        "packagesPath": "C:\\Users\\CHAMA COMPUTERS\\.nuget\\packages\\",
+        "outputPath": "D:\\Sef-09-minihackathon\\SmartKunu-LK\\server\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\abhis\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config"
+          "C:\\Users\\CHAMA COMPUTERS\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -50,13 +52,19 @@
           "framework": "net10.0",
           "targetAlias": "net10.0",
           "dependencies": {
+            "Microsoft.EntityFrameworkCore.Design": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[10.0.11, )"
+            },
             "Microsoft.EntityFrameworkCore.InMemory": {
               "target": "Package",
               "version": "[9.0.2, )"
             },
             "Npgsql.EntityFrameworkCore.PostgreSQL": {
               "target": "Package",
-              "version": "[9.0.3, )"
+              "version": "[10.0.3, )"
             },
             "Swashbuckle.AspNetCore": {
               "target": "Package",

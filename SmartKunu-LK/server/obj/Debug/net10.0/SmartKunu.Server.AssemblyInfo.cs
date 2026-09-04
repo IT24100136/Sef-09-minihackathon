@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SmartKunu.Server")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0c3218f01f2863c0ee65dce2e64527c227dab296")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+be73b7a2b6127c3d2df69a59dd4dbe76d7edd762")]
 [assembly: System.Reflection.AssemblyProductAttribute("SmartKunu.Server")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SmartKunu.Server")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
