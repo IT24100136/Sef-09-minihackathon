@@ -5,7 +5,11 @@ using SmartKunu.Server.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure CORS: Add a policy named "AllowFrontend" for local React integration
+// Configure dynamic PORT binding for Render / Cloud hosting
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+builder.WebHost.UseUrls($"http://*:{port}");
+
+// Configure CORS: Add a policy named "AllowFrontend" for local & production deployment
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -45,9 +49,13 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Enable Swagger UI and CORS
+// Enable Swagger UI across all environments for hackathon review
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "SmartKunu LK Web API v1");
+    c.RoutePrefix = "swagger";
+});
 
 app.UseCors("AllowFrontend");
 
