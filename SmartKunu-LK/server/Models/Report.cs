@@ -8,5 +8,6 @@ public class Report
     public string Ward { get; set; } = string.Empty;
     public string WasteCategory { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string Status { get; set; } = "Pending";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

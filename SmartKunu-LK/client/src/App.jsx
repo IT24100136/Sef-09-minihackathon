@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ScheduleView from './features/schedules/ScheduleView';
 import ReportForm from './features/reports/ReportForm';
+import AdminPortal from './features/admin/AdminPortal';
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<ScheduleView />} />
             <Route path="/report" element={<ReportForm />} />
+            <Route path="/admin" element={<AdminPortal />} />
           </Routes>
         </main>
         <Footer />

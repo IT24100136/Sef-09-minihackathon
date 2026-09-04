@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { api } from '../../services/api';
+import { api, fetchReportsApi, updateReportApi, deleteReportApi } from '../../services/api';
 import { 
   AlertTriangle, 
   Send, 
@@ -13,7 +13,12 @@ import {
   FileText, 
   Clock, 
   Layers,
-  WifiOff
+  WifiOff,
+  Edit,
+  Trash2,
+  X,
+  Save,
+  RefreshCw
 } from 'lucide-react';
 
 const SRI_LANKA_MOBILE_REGEX = /^(?:0|94)?7[0-9]{8}$/;
@@ -38,9 +43,14 @@ const CATEGORY_OPTIONS = [
   'Other Hazard',
 ];
 
+const STATUS_OPTIONS = ['Pending', 'In Progress', 'Dispatched', 'Resolved'];
+
 export default function ReportForm() {
   const [submitStatus, setSubmitStatus] = useState(null);
   const [activeComplaints, setActiveComplaints] = useState([]);
+  const [loadingFeed, setLoadingFeed] = useState(true);
+  const [editingReport, setEditingReport] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const {
     register,
@@ -58,21 +68,40 @@ export default function ReportForm() {
     },
   });
 
+  // Fetch active reports from PostgreSQL database on mount
+  const loadReports = async () => {
+    setLoadingFeed(true);
+    try {
+      const data = await fetchReportsApi();
+      if (Array.isArray(data)) {
+        setActiveComplaints(data);
+      }
+    } catch (err) {
+      console.warn('Could not fetch database reports for live feed:', err);
+    } finally {
+      setLoadingFeed(false);
+    }
+  };
+
+  useEffect(() => {
+    loadReports();
+  }, []);
+
+  // Form Submit Handler (Saves to Database & refreshes feed)
   const onSubmit = async (data) => {
     setSubmitStatus(null);
-    const newReportObj = {
+    const fallbackReport = {
       id: Date.now(),
       reporterName: data.reporterName,
       mobileNumber: data.mobileNumber,
       ward: data.ward,
       wasteCategory: data.wasteCategory,
       description: data.description,
+      status: 'Pending',
       createdAt: new Date().toISOString(),
-      timestampText: 'Just Now',
     };
 
     try {
-      // POST request matching ASP.NET Core CreateReportDto property names
       const response = await api.post('/reports', {
         reporterName: data.reporterName,
         mobileNumber: data.mobileNumber,
@@ -86,12 +115,8 @@ export default function ReportForm() {
         message: 'Report submitted successfully to the municipal database!',
       });
 
-      const serverReport = {
-        ...newReportObj,
-        id: response.data?.id || newReportObj.id,
-      };
-
-      setActiveComplaints((prev) => [serverReport, ...prev]);
+      // Reload database reports to reflect new submission in live feed
+      await loadReports();
       reset();
     } catch (error) {
       console.warn('API connection offline or payload error. Operating in local fallback mode:', error);
@@ -99,8 +124,60 @@ export default function ReportForm() {
         type: 'warning',
         message: 'Server connection issue: Report saved locally to active complaints feed.',
       });
-      setActiveComplaints((prev) => [newReportObj, ...prev]);
+      setActiveComplaints((prev) => [fallbackReport, ...prev]);
       reset();
+    }
+  };
+
+  // Edit Submit Handler
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingReport) return;
+
+    try {
+      await updateReportApi(editingReport.id, {
+        reporterName: editingReport.reporterName,
+        mobileNumber: editingReport.mobileNumber,
+        ward: editingReport.ward,
+        wasteCategory: editingReport.wasteCategory,
+        description: editingReport.description,
+        status: editingReport.status,
+      });
+
+      setSubmitStatus({
+        type: 'success',
+        message: `Report REF #${editingReport.id} successfully updated in database!`,
+      });
+
+      setActiveComplaints((prev) =>
+        prev.map((r) => (r.id === editingReport.id ? { ...editingReport } : r))
+      );
+      setEditingReport(null);
+    } catch (err) {
+      console.error('Failed to update report:', err);
+      setActiveComplaints((prev) =>
+        prev.map((r) => (r.id === editingReport.id ? { ...editingReport } : r))
+      );
+      setEditingReport(null);
+    }
+  };
+
+  // Delete Confirm Handler
+  const confirmDelete = async () => {
+    if (!deletingId) return;
+
+    try {
+      await deleteReportApi(deletingId);
+      setSubmitStatus({
+        type: 'success',
+        message: `Report REF #${deletingId} deleted from database.`,
+      });
+      setActiveComplaints((prev) => prev.filter((r) => r.id !== deletingId));
+      setDeletingId(null);
+    } catch (err) {
+      console.error('Failed to delete report:', err);
+      setActiveComplaints((prev) => prev.filter((r) => r.id !== deletingId));
+      setDeletingId(null);
     }
   };
 
@@ -118,6 +195,19 @@ export default function ReportForm() {
         return 'bg-red-600 text-white';
       default:
         return 'bg-slate-700 text-white';
+    }
+  };
+
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 'Resolved':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+      case 'Dispatched':
+        return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'In Progress':
+        return 'bg-amber-100 text-amber-900 border-amber-300';
+      default:
+        return 'bg-purple-100 text-purple-800 border-purple-300';
     }
   };
 
@@ -140,23 +230,31 @@ export default function ReportForm() {
       {/* Visual Confirmation Status Alerts */}
       {submitStatus && (
         <div
-          className={`p-4 rounded-xl border flex items-start gap-3 shadow-md ${
+          className={`p-4 rounded-xl border flex items-start justify-between gap-3 shadow-md animate-fade-in ${
             submitStatus.type === 'success'
               ? 'bg-emerald-50 border-emerald-400 text-emerald-900'
               : 'bg-amber-50 border-amber-400 text-amber-900'
           }`}
         >
-          {submitStatus.type === 'success' ? (
-            <CheckCircle2 className="h-6 w-6 text-emerald-600 flex-shrink-0 mt-0.5" />
-          ) : (
-            <WifiOff className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
-          )}
-          <div>
-            <h3 className="font-bold text-sm">
-              {submitStatus.type === 'success' ? 'Report Logged Successfully!' : 'Local Demo Mode Active'}
-            </h3>
-            <p className="text-xs sm:text-sm mt-0.5">{submitStatus.message}</p>
+          <div className="flex items-start gap-3">
+            {submitStatus.type === 'success' ? (
+              <CheckCircle2 className="h-6 w-6 text-emerald-600 flex-shrink-0 mt-0.5" />
+            ) : (
+              <WifiOff className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
+            )}
+            <div>
+              <h3 className="font-bold text-sm">
+                {submitStatus.type === 'success' ? 'Database Updated Successfully!' : 'Local Demo Mode Active'}
+              </h3>
+              <p className="text-xs sm:text-sm mt-0.5">{submitStatus.message}</p>
+            </div>
           </div>
+          <button
+            onClick={() => setSubmitStatus(null)}
+            className="text-slate-500 hover:text-slate-800 cursor-pointer"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       )}
 
@@ -295,22 +393,35 @@ export default function ReportForm() {
         </form>
       </div>
 
-      {/* Live Feed UI */}
+      {/* Live Feed UI - Active Database Complaints */}
       <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 space-y-6">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-emerald-600" />
-            <h2 className="text-xl font-bold text-slate-900">Active Complaints (Live Feed)</h2>
+            <h2 className="text-xl font-bold text-slate-900">Active Complaints (Live Database Feed)</h2>
           </div>
-          <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full border border-emerald-300">
-            {activeComplaints.length} Reported
-          </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={loadReports}
+              className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer"
+              title="Refresh database feed"
+            >
+              <RefreshCw className={`h-4 w-4 ${loadingFeed ? 'animate-spin' : ''}`} />
+            </button>
+            <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full border border-emerald-300">
+              {activeComplaints.length} Active Report{activeComplaints.length !== 1 ? 's' : ''}
+            </span>
+          </div>
         </div>
 
-        {activeComplaints.length === 0 ? (
+        {loadingFeed ? (
+          <div className="p-8 text-center text-slate-500 font-medium text-sm">
+            Fetching active reports from PostgreSQL database...
+          </div>
+        ) : activeComplaints.length === 0 ? (
           <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300">
             <p className="text-slate-500 font-medium text-sm">
-              No new reports submitted in this session.
+              No active reports in the database yet. Use the form above to file a new report.
             </p>
           </div>
         ) : (
@@ -321,19 +432,43 @@ export default function ReportForm() {
                 className="bg-slate-50 rounded-xl p-5 border border-slate-200 space-y-3 shadow-sm hover:border-emerald-300 transition-all"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-xs font-bold text-slate-500">#{complaint.id}</span>
                     <span className="font-bold text-slate-900 text-base">{complaint.ward}</span>
                     <span
-                      className={`text-xs font-bold px-2.5 py-0.5 rounded-md shadow-sm ${getBadgeColorClass(
+                      className={`text-xs font-bold px-2.5 py-0.5 rounded-md shadow-xs ${getBadgeColorClass(
                         complaint.wasteCategory
                       )}`}
                     >
                       {complaint.wasteCategory}
                     </span>
                   </div>
-                  <span className="text-xs text-emerald-700 font-bold bg-emerald-100 px-2.5 py-0.5 rounded-full self-start sm:self-auto border border-emerald-300">
-                    {complaint.timestampText}
-                  </span>
+                  
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${getStatusBadgeClass(
+                        complaint.status
+                      )}`}
+                    >
+                      {complaint.status || 'Pending'}
+                    </span>
+                    
+                    {/* User Edit & Delete Actions */}
+                    <button
+                      onClick={() => setEditingReport({ ...complaint })}
+                      title="Edit this report"
+                      className="p-1.5 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setDeletingId(complaint.id)}
+                      title="Delete this report"
+                      className="p-1.5 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 <p className="text-sm text-slate-700 leading-relaxed font-normal">
@@ -341,14 +476,165 @@ export default function ReportForm() {
                 </p>
 
                 <div className="flex justify-between items-center text-xs text-slate-500 pt-1 border-t border-slate-200/50">
-                  <span>Reporter: <strong className="text-slate-700">{complaint.reporterName}</strong></span>
-                  <span className="font-mono text-[11px] text-slate-400">Mobile: {complaint.mobileNumber}</span>
+                  <span>Reporter: <strong className="text-slate-700">{complaint.reporterName}</strong> ({complaint.mobileNumber})</span>
+                  <span className="text-[11px] text-slate-400">
+                    Logged: {new Date(complaint.createdAt).toLocaleDateString()}
+                  </span>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Modal 1: Edit Report Details Modal */}
+      {editingReport && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200 space-y-4">
+            <div className="bg-emerald-900 text-white px-6 py-4 flex justify-between items-center">
+              <div className="flex items-center gap-2 font-bold text-lg">
+                <Edit className="h-5 w-5 text-emerald-300" />
+                <span>Edit Incident Report #{editingReport.id}</span>
+              </div>
+              <button
+                onClick={() => setEditingReport(null)}
+                className="text-emerald-200 hover:text-white cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    Reporter Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editingReport.reporterName}
+                    onChange={(e) =>
+                      setEditingReport({ ...editingReport, reporterName: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    Mobile Number
+                  </label>
+                  <input
+                    type="text"
+                    value={editingReport.mobileNumber}
+                    onChange={(e) =>
+                      setEditingReport({ ...editingReport, mobileNumber: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    Ward Location
+                  </label>
+                  <input
+                    type="text"
+                    value={editingReport.ward}
+                    onChange={(e) =>
+                      setEditingReport({ ...editingReport, ward: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    Waste Category
+                  </label>
+                  <select
+                    value={editingReport.wasteCategory}
+                    onChange={(e) =>
+                      setEditingReport({ ...editingReport, wasteCategory: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500"
+                  >
+                    {CATEGORY_OPTIONS.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Description
+                </label>
+                <textarea
+                  rows={3}
+                  value={editingReport.description}
+                  onChange={(e) =>
+                    setEditingReport({ ...editingReport, description: e.target.value })
+                  }
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingReport(null)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow transition-colors cursor-pointer"
+                >
+                  <Save className="h-4 w-4" />
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 2: Delete Confirmation Dialog */}
+      {deletingId && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-slate-200 text-center">
+            <div className="p-3 bg-red-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto text-red-600">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900">Confirm Report Deletion</h3>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Are you sure you want to delete report <strong className="text-slate-900">REF #{deletingId}</strong>? This action will remove the entry from the database.
+            </p>
+            <div className="flex justify-center gap-3 pt-2">
+              <button
+                onClick={() => setDeletingId(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow transition-colors cursor-pointer"
+              >
+                Delete Permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

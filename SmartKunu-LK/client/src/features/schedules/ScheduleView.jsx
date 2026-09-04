@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Legend from '../../components/Legend';
+import { fetchSchedulesApi } from '../../services/api';
 import { 
   Filter, 
   RotateCcw, 
@@ -9,10 +10,11 @@ import {
   CheckCircle2, 
   AlertCircle, 
   Search,
-  Check
+  Check,
+  RefreshCw
 } from 'lucide-react';
 
-const SCHEDULE_DATASET = [
+const FALLBACK_SCHEDULES = [
   {
     id: 1,
     municipality: 'Colombo Municipal Council',
@@ -60,14 +62,6 @@ const SCHEDULE_DATASET = [
   },
 ];
 
-const WARD_OPTIONS = [
-  'All Wards',
-  'Colombo 03 - Kollupitiya',
-  'Colombo 07 - Cinnamon Gardens',
-  'Dehiwala Ward 4',
-  'Battaramulla Ward 2',
-];
-
 const CATEGORY_OPTIONS = [
   'All Categories',
   'Perishable Organic',
@@ -77,12 +71,39 @@ const CATEGORY_OPTIONS = [
 ];
 
 export default function ScheduleView() {
+  const [schedules, setSchedules] = useState(FALLBACK_SCHEDULES);
+  const [loading, setLoading] = useState(true);
   const [selectedWard, setSelectedWard] = useState('All Wards');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
 
+  // Load schedules from PostgreSQL database
+  const loadSchedules = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchSchedulesApi();
+      if (Array.isArray(data) && data.length > 0) {
+        setSchedules(data);
+      }
+    } catch (err) {
+      console.warn('Could not fetch schedules from server, using fallback static data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSchedules();
+  }, []);
+
+  // Dynamically derive ward options from database dataset
+  const wardOptions = useMemo(() => {
+    const uniqueWards = Array.from(new Set(schedules.map((s) => s.ward).filter(Boolean)));
+    return ['All Wards', ...uniqueWards];
+  }, [schedules]);
+
   // Filter schedules based on active dropdown selections
   const filteredSchedules = useMemo(() => {
-    return SCHEDULE_DATASET.filter((item) => {
+    return schedules.filter((item) => {
       const matchWard =
         selectedWard === 'All Wards' || item.ward.toLowerCase() === selectedWard.toLowerCase();
       const matchCategory =
@@ -90,7 +111,7 @@ export default function ScheduleView() {
         item.wasteCategory.toLowerCase() === selectedCategory.toLowerCase();
       return matchWard && matchCategory;
     });
-  }, [selectedWard, selectedCategory]);
+  }, [schedules, selectedWard, selectedCategory]);
 
   const handleReset = () => {
     setSelectedWard('All Wards');
@@ -117,10 +138,18 @@ export default function ScheduleView() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* 1. Problem & Solution Context Banner */}
       <div className="bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-xl border border-emerald-800/50 space-y-6">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between">
           <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">
             Public Health & Civic Action Initiative
           </span>
+          <button
+            onClick={loadSchedules}
+            className="inline-flex items-center gap-1.5 bg-emerald-800/60 hover:bg-emerald-700 text-emerald-200 text-xs font-semibold px-3 py-1 rounded-lg border border-emerald-600/40 transition-colors cursor-pointer"
+            title="Refresh database schedules"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Sync Database</span>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-emerald-800/60">
@@ -187,7 +216,7 @@ export default function ScheduleView() {
                 onChange={(e) => setSelectedWard(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 p-3 pr-10 font-medium cursor-pointer appearance-none transition-all"
               >
-                {WARD_OPTIONS.map((ward) => (
+                {wardOptions.map((ward) => (
                   <option key={ward} value={ward}>
                     {ward}
                   </option>
@@ -223,14 +252,18 @@ export default function ScheduleView() {
       {/* 4. Results Count Header */}
       <div className="flex items-center justify-between px-1">
         <span className="text-sm font-bold text-slate-700">
-          Showing {filteredSchedules.length} of {SCHEDULE_DATASET.length} schedules
+          Showing {filteredSchedules.length} of {schedules.length} schedules
         </span>
-        <span className="text-xs text-slate-500">Official Municipal Timetables</span>
+        <span className="text-xs text-slate-500 font-medium">PostgreSQL Database Timetables</span>
       </div>
 
       {/* 5. Dynamic Responsive Schedule Table & Cards */}
       <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
-        {filteredSchedules.length === 0 ? (
+        {loading ? (
+          <div className="p-12 text-center text-slate-500 font-medium">
+            Fetching collection schedules from PostgreSQL database...
+          </div>
+        ) : filteredSchedules.length === 0 ? (
           <div className="p-12 text-center space-y-4">
             <Search className="h-12 w-12 text-slate-300 mx-auto" />
             <div className="space-y-1">
@@ -271,7 +304,7 @@ export default function ScheduleView() {
                     {/* Column 2: Waste Category */}
                     <td className="py-4 px-4">
                       <span
-                        className={`inline-block px-3 py-1 text-xs font-bold rounded-lg border shadow-sm ${getCategoryBadgeClass(
+                        className={`inline-block px-3 py-1 text-xs font-bold rounded-lg border shadow-xs ${getCategoryBadgeClass(
                           schedule.wasteCategory
                         )}`}
                       >
