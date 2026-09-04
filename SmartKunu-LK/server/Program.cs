@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using SmartKunu.Server.Data;
 using SmartKunu.Server.DTOs;
 using SmartKunu.Server.Models;
 
@@ -14,13 +16,21 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Register AppDbContext with PostgreSQL (Neon Database)
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 // Add Swagger/OpenAPI services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Member 4 will register AppDbContext here
-
 var app = builder.Build();
+
+// Auto-create database & apply seed data on startup if not existing
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
+}
 
 // Enable Swagger UI and CORS
 app.UseSwagger();
@@ -28,70 +38,27 @@ app.UseSwaggerUI();
 
 app.UseCors("AllowFrontend");
 
-// Mock Schedules Dataset
-var mockSchedules = new List<Schedule>
-{
-    new Schedule
-    {
-        Id = 1,
-        Municipality = "Colombo Municipal Council",
-        Ward = "Colombo 03 - Kollupitiya",
-        WasteCategory = "Perishable Organic",
-        PickupDates = "Every Monday & Thursday",
-        RouteInfo = "Galle Road Corridor",
-        Guidelines = "CMC will reject mixed polythene bags"
-    },
-    new Schedule
-    {
-        Id = 2,
-        Municipality = "Colombo Municipal Council",
-        Ward = "Colombo 07 - Cinnamon Gardens",
-        WasteCategory = "Recyclable Plastics",
-        PickupDates = "Every Wednesday",
-        RouteInfo = "Dharmapala Mawatha Sector",
-        Guidelines = "Clean & dry plastics only"
-    },
-    new Schedule
-    {
-        Id = 3,
-        Municipality = "Dehiwala-Mount Lavinia MC",
-        Ward = "Dehiwala Ward 4",
-        WasteCategory = "Paper/Cardboard",
-        PickupDates = "Every Tuesday",
-        RouteInfo = "Vandervort Place & Station Rd",
-        Guidelines = "Flatten all cardboard cartons"
-    },
-    new Schedule
-    {
-        Id = 4,
-        Municipality = "Dehiwala-Mount Lavinia MC",
-        Ward = "Dehiwala Ward 4",
-        WasteCategory = "Electronic Waste",
-        PickupDates = "Last Friday of the month",
-        RouteInfo = "Ward 4 Community Drop",
-        Guidelines = "Includes appliances, batteries & scrap metal"
-    },
-    new Schedule
-    {
-        Id = 5,
-        Municipality = "Kaduwela Municipal Council",
-        Ward = "Battaramulla Ward 2",
-        WasteCategory = "Perishable Organic",
-        PickupDates = "Monday, Wednesday, Friday",
-        RouteInfo = "Main Road Zone",
-        Guidelines = "Only biodegradable waste collected"
-    }
-};
+// Health check endpoint
+app.MapGet("/", () => Results.Ok(new { status = "Online", service = "SmartKunu-LK Web API", database = "PostgreSQL (Neon)" }));
 
-// Endpoint 1: GET /api/schedules
-app.MapGet("/api/schedules", () =>
+// Endpoint 1: GET /api/schedules - Fetch schedules from PostgreSQL database
+app.MapGet("/api/schedules", async (AppDbContext db) =>
 {
-    return Results.Ok(mockSchedules);
+    var schedules = await db.Schedules.ToListAsync();
+    return Results.Ok(schedules);
 })
 .WithName("GetSchedules");
 
-// Endpoint 2: POST /api/reports
-app.MapPost("/api/reports", (CreateReportDto dto) =>
+// Endpoint 2: GET /api/reports - Fetch reports from PostgreSQL database
+app.MapGet("/api/reports", async (AppDbContext db) =>
+{
+    var reports = await db.Reports.OrderByDescending(r => r.CreatedAt).ToListAsync();
+    return Results.Ok(reports);
+})
+.WithName("GetReports");
+
+// Endpoint 3: POST /api/reports - Save incoming DTO to PostgreSQL database
+app.MapPost("/api/reports", async (CreateReportDto dto, AppDbContext db) =>
 {
     var newReport = new Report
     {
@@ -104,7 +71,8 @@ app.MapPost("/api/reports", (CreateReportDto dto) =>
         CreatedAt = DateTime.UtcNow
     };
 
-    // Member 4 will save to AppDbContext here
+    db.Reports.Add(newReport);
+    await db.SaveChangesAsync();
 
     return Results.Created($"/api/reports/{newReport.Id}", newReport);
 })
