@@ -50,10 +50,10 @@ Uncollected bulk waste in suburban councils like Dehiwala often ends up illegall
 
 | Name | Student ID / Role | Branch Contribution |
 |---|---|---|
-| **Shalitha** | IT24100136 (Team Lead) | Monorepo Setup & Integration |
-| **Wazni** | Member 1 | `feat/ui-schedule-filter` (Navbar, Footer, Legend, ScheduleView) |
-| **Charaka** | Member 2 | `feat/ui-report-form` (Axios API, ReportForm, Live Feed) |
-| **Oshadha** | Member 3 & Member 4 | `feat/api-endpoints-dtos` & `feat/db-efcore-deploy` (Models, DTOs, EF Core, Neon DB) |
+| **Karunarathna M. M. G. A. S** | IT24100136  | Monorepo Setup & Integration & `feat/db-efcore-deploy`( EF Core, Neon DB) |
+| **Rathnayake R. M. T. S** | IT24100012 | `feat/ui-schedule-filter` (Navbar, Footer, Legend, ScheduleView) |
+| **Rathnayake R. M. H. T** | IT24100510 | `feat/ui-report-form` (Axios API, ReportForm, Live Feed) |
+| **Abeynayake D. A** | IT24100971| `feat/api-endpoints-dtos`(Models, DTOs) |
 
 ---
 
