@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { submitReportApi } from '../../services/api';
+import { api } from '../../services/api';
 import { 
   AlertTriangle, 
   Send, 
@@ -11,298 +11,270 @@ import {
   User, 
   MapPin, 
   FileText, 
-  Flame, 
   Clock, 
-  ShieldAlert 
+  Layers,
+  WifiOff
 } from 'lucide-react';
 
-// Sri Lankan Mobile Number Regex: Matches 07XXXXXXXX, 947XXXXXXXX, or 7XXXXXXXX (9 digits starting with 7)
 const SRI_LANKA_MOBILE_REGEX = /^(?:0|94)?7[0-9]{8}$/;
 
-// Zod Validation Schema
 const reportSchema = z.object({
-  reporterName: z.string().min(1, 'Reporter Name is required.'),
+  reporterName: z.string().min(2, 'Name must be at least 2 characters'),
   mobileNumber: z
     .string()
-    .min(1, 'Mobile number is required.')
-    .regex(
-      SRI_LANKA_MOBILE_REGEX,
-      'Invalid Sri Lankan mobile number! Format must be 07XXXXXXXX or 947XXXXXXXX (e.g., 0771234567)'
-    ),
-  wardName: z.string().min(1, 'Please select a Ward / Location.'),
-  hazardCategory: z.string().min(1, 'Please select a Waste Hazard Category.'),
-  description: z.string().min(10, 'Description must be at least 10 characters long.'),
+    .min(1, 'Mobile number is required')
+    .regex(SRI_LANKA_MOBILE_REGEX, 'Must be a valid 10-digit Sri Lankan mobile number, e.g., 07XXXXXXXX'),
+  ward: z.string().min(2, 'Ward/Location is required'),
+  wasteCategory: z.string().min(1, 'Please select a waste hazard category'),
+  description: z.string().min(10, 'Description must be at least 10 characters'),
 });
 
-const INITIAL_ACTIVE_COMPLAINTS = [
-  {
-    id: 101,
-    reporterName: 'Sunil Perera',
-    mobileNumber: '0778901234',
-    wardName: 'Colombo 03 - Kollupitiya',
-    hazardCategory: 'Illegal Dumping',
-    description: 'Uncollected pile of polythene and commercial debris dumped near Marine Drive junction blocking sidewalk.',
-    createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-    status: 'Investigating',
-  },
-  {
-    id: 102,
-    reporterName: 'Nimali Jayasinghe',
-    mobileNumber: '0712345678',
-    wardName: 'Dehiwala Ward 4 - Nedimala',
-    hazardCategory: 'Missed Collection',
-    description: 'Organic waste truck skipped Nedimala 2nd Lane on Wednesday pickup route. Bins overflowing.',
-    createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-    status: 'Dispatched',
-  },
-];
-
-const WARD_LIST = [
-  'Colombo 01 - Fort',
-  'Colombo 02 - Slave Island',
-  'Colombo 03 - Kollupitiya',
-  'Colombo 04 - Bambalapitiya',
-  'Colombo 07 - Cinnamon Gardens',
-  'Dehiwala Ward 4 - Nedimala',
-  'Kotte Ward 2 - Rajagiriya',
-  'Kandy Central Ward 1',
-];
-
-const HAZARD_CATEGORIES = [
-  'Illegal Dumping',
-  'Missed Collection',
-  'Toxic / Hazardous Chemical',
-  'E-Waste Abandonment',
-  'Blocked Drain Overflow',
+const CATEGORY_OPTIONS = [
+  'Perishable Organic',
+  'Recyclable Plastics',
+  'Paper/Cardboard',
+  'Electronic Waste',
+  'Glass/Metal',
+  'Other Hazard',
 ];
 
 export default function ReportForm() {
-  const [activeComplaints, setActiveComplaints] = useState(INITIAL_ACTIVE_COMPLAINTS);
-  const [successAlert, setSuccessAlert] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState(null);
+  const [activeComplaints, setActiveComplaints] = useState([]);
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(reportSchema),
     defaultValues: {
       reporterName: '',
       mobileNumber: '',
-      wardName: '',
-      hazardCategory: '',
+      ward: '',
+      wasteCategory: '',
       description: '',
     },
   });
 
   const onSubmit = async (data) => {
-    setIsSubmitting(true);
-    setSuccessAlert(null);
+    setSubmitStatus(null);
+    const newReportObj = {
+      id: Date.now(),
+      reporterName: data.reporterName,
+      mobileNumber: data.mobileNumber,
+      ward: data.ward,
+      wasteCategory: data.wasteCategory,
+      description: data.description,
+      createdAt: new Date().toISOString(),
+      timestampText: 'Just Now',
+    };
 
     try {
-      // Send report to ASP.NET Core backend API
-      const result = await submitReportApi(data);
-
-      const newComplaint = {
-        id: result?.id || Date.now(),
+      // POST request to backend API
+      await api.post('/reports', {
         reporterName: data.reporterName,
         mobileNumber: data.mobileNumber,
-        wardName: data.wardName,
-        hazardCategory: data.hazardCategory,
+        wardName: data.ward,
+        hazardCategory: data.wasteCategory,
         description: data.description,
-        createdAt: result?.createdAt || new Date().toISOString(),
-        status: 'Logged',
-      };
-
-      // Dynamically prepend new complaint to active complaints feed state
-      setActiveComplaints((prev) => [newComplaint, ...prev]);
-
-      // Show visual confirmation alert
-      setSuccessAlert({
-        id: newComplaint.id,
-        ward: data.wardName,
-        category: data.hazardCategory,
-        message: 'Your report has been successfully logged with the Municipal Environmental Unit.',
       });
 
-      // Reset form fields
+      setSubmitStatus({
+        type: 'success',
+        message: 'Report submitted successfully to the municipal database!',
+      });
+      setActiveComplaints((prev) => [newReportObj, ...prev]);
       reset();
-    } catch (err) {
-      console.error('Error submitting complaint:', err);
-    } finally {
-      setIsSubmitting(false);
+    } catch (error) {
+      console.warn('API connection offline or error encountered. Operating in local demo mode:', error);
+      // Fallback for hackathon demo mode: still prepend to activeComplaints
+      setSubmitStatus({
+        type: 'warning',
+        message: 'Server offline / local demo mode: Report saved locally to active complaints feed.',
+      });
+      setActiveComplaints((prev) => [newReportObj, ...prev]);
+      reset();
+    }
+  };
+
+  const getBadgeColorClass = (category) => {
+    switch (category) {
+      case 'Perishable Organic':
+        return 'bg-emerald-600 text-white';
+      case 'Recyclable Plastics':
+        return 'bg-orange-500 text-white';
+      case 'Paper/Cardboard':
+        return 'bg-blue-600 text-white';
+      case 'Electronic Waste':
+        return 'bg-amber-800 text-white';
+      case 'Glass/Metal':
+        return 'bg-red-600 text-white';
+      default:
+        return 'bg-slate-700 text-white';
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 space-y-10">
-      {/* Header section */}
-      <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold border border-amber-300">
-          <ShieldAlert className="h-4 w-4 text-amber-600" />
-          <span>Municipal Citizen Complaint Portal</span>
+    <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 space-y-8">
+      {/* Title & Subtitle Banner */}
+      <div className="text-center space-y-2">
+        <div className="inline-flex items-center gap-2 bg-amber-100 text-amber-900 text-xs font-bold px-3 py-1 rounded-full border border-amber-300">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <span>Dengue Prevention & Rapid Response</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-          Report Illegal Dumping or Missed Collection
+          Report Illegal Dumping & Missed Collection
         </h1>
-        <p className="text-slate-600 max-w-2xl mx-auto text-sm sm:text-base">
-          Submit details regarding uncollected waste, illegal roadside dumping, or hazardous environmental issues. 
-          Reports are directly routed to the relevant Municipal Council ward officers.
+        <p className="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto">
+          Help keep our city clean and prevent dengue. Report hazards here.
         </p>
       </div>
 
-      {/* Visual Success Alert */}
-      {successAlert && (
-        <div className="bg-emerald-50 border border-emerald-400 p-5 rounded-xl shadow-md flex items-start gap-4 animate-fade-in">
-          <CheckCircle2 className="h-7 w-7 text-emerald-600 flex-shrink-0 mt-0.5" />
-          <div className="space-y-1 flex-1">
-            <div className="flex items-center justify-between">
-              <h3 className="text-emerald-900 font-bold text-base">Complaint Successfully Filed!</h3>
-              <span className="text-xs bg-emerald-200 text-emerald-900 px-2.5 py-0.5 rounded-full font-mono font-bold">
-                REF #{successAlert.id}
-              </span>
-            </div>
-            <p className="text-emerald-800 text-sm">{successAlert.message}</p>
-            <p className="text-xs text-emerald-700 font-medium">
-              Location: <span className="font-semibold">{successAlert.ward}</span> | Category:{' '}
-              <span className="font-semibold">{successAlert.category}</span>
-            </p>
+      {/* Visual Confirmation Status Alerts */}
+      {submitStatus && (
+        <div
+          className={`p-4 rounded-xl border flex items-start gap-3 shadow-md ${
+            submitStatus.type === 'success'
+              ? 'bg-emerald-50 border-emerald-400 text-emerald-900'
+              : 'bg-amber-50 border-amber-400 text-amber-900'
+          }`}
+        >
+          {submitStatus.type === 'success' ? (
+            <CheckCircle2 className="h-6 w-6 text-emerald-600 flex-shrink-0 mt-0.5" />
+          ) : (
+            <WifiOff className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
+          )}
+          <div>
+            <h3 className="font-bold text-sm">
+              {submitStatus.type === 'success' ? 'Report Logged Successfully!' : 'Local Demo Mode Active'}
+            </h3>
+            <p className="text-xs sm:text-sm mt-0.5">{submitStatus.message}</p>
           </div>
         </div>
       )}
 
-      {/* Main Report Form Card */}
+      {/* Report Form Card */}
       <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-lg">
             <AlertTriangle className="h-5 w-5 text-amber-400" />
-            <h2>Environmental Incident Report Form</h2>
+            <span>Hazard Incident Report</span>
           </div>
-          <span className="text-xs text-slate-400">All fields required</span>
+          <span className="text-xs text-slate-400 font-medium">Sri Lanka Municipal Incident Desk</span>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 sm:p-8 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Field 1: Reporter Name */}
+            {/* Input 1: Reporter Name */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Reporter Full Name
+                Reporter Name
               </label>
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="e.g. Kanthi Silva"
+                  placeholder="Enter your full name"
                   {...register('reporterName')}
                   className={`w-full bg-slate-50 border ${
                     errors.reporterName ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-emerald-500'
-                  } text-slate-800 text-sm rounded-lg focus:ring-2 focus:outline-none p-3 pl-10`}
+                  } text-slate-900 text-sm rounded-xl focus:ring-2 focus:outline-none p-3 pl-10`}
                 />
                 <User className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
               </div>
               {errors.reporterName && (
-                <p className="text-red-500 text-xs font-medium mt-1">{errors.reporterName.message}</p>
+                <p className="text-red-500 text-xs font-semibold mt-1">{errors.reporterName.message}</p>
               )}
             </div>
 
-            {/* Field 2: Mobile Number (Sri Lankan regex validation) */}
+            {/* Input 2: Mobile Number */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Mobile Number (Sri Lanka)
+                Mobile Number
               </label>
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="0771234567 or 94771234567"
+                  placeholder="e.g. 0771234567 or 94771234567"
                   {...register('mobileNumber')}
                   className={`w-full bg-slate-50 border ${
-                    errors.mobileNumber ? 'border-red-500 focus:ring-red-500 bg-red-50/20' : 'border-slate-300 focus:ring-emerald-500'
-                  } text-slate-800 text-sm rounded-lg focus:ring-2 focus:outline-none p-3 pl-10`}
+                    errors.mobileNumber ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-emerald-500'
+                  } text-slate-900 text-sm rounded-xl focus:ring-2 focus:outline-none p-3 pl-10`}
                 />
                 <Phone className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
               </div>
-              {errors.mobileNumber ? (
-                <div className="flex items-center gap-1.5 text-red-600 text-xs font-semibold bg-red-50 p-2 rounded border border-red-200 mt-1">
-                  <AlertTriangle className="h-4 w-4 flex-shrink-0 text-red-500" />
-                  <span>{errors.mobileNumber.message}</span>
-                </div>
-              ) : (
-                <p className="text-xs text-slate-500">Sri Lankan mobile formats: 07XXXXXXXX or 947XXXXXXXX</p>
+              {errors.mobileNumber && (
+                <p className="text-red-500 text-xs font-semibold mt-1">{errors.mobileNumber.message}</p>
               )}
             </div>
 
-            {/* Field 3: Ward / Location Name */}
+            {/* Input 3: Ward / Location Name */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Ward / Incident Location
+                Ward / Location Name
               </label>
               <div className="relative">
-                <select
-                  {...register('wardName')}
+                <input
+                  type="text"
+                  placeholder="e.g. Dehiwala Ward 4 or Colombo 03"
+                  {...register('ward')}
                   className={`w-full bg-slate-50 border ${
-                    errors.wardName ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-emerald-500'
-                  } text-slate-800 text-sm rounded-lg focus:ring-2 focus:outline-none p-3 pl-10 appearance-none cursor-pointer`}
-                >
-                  <option value="">-- Select Ward Location --</option>
-                  {WARD_LIST.map((w) => (
-                    <option key={w} value={w}>
-                      {w}
-                    </option>
-                  ))}
-                </select>
+                    errors.ward ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-emerald-500'
+                  } text-slate-900 text-sm rounded-xl focus:ring-2 focus:outline-none p-3 pl-10`}
+                />
                 <MapPin className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
               </div>
-              {errors.wardName && (
-                <p className="text-red-500 text-xs font-medium mt-1">{errors.wardName.message}</p>
+              {errors.ward && (
+                <p className="text-red-500 text-xs font-semibold mt-1">{errors.ward.message}</p>
               )}
             </div>
 
-            {/* Field 4: Waste Hazard Category */}
+            {/* Input 4: Waste Hazard Category */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                 Waste Hazard Category
               </label>
               <div className="relative">
                 <select
-                  {...register('hazardCategory')}
+                  {...register('wasteCategory')}
                   className={`w-full bg-slate-50 border ${
-                    errors.hazardCategory ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-emerald-500'
-                  } text-slate-800 text-sm rounded-lg focus:ring-2 focus:outline-none p-3 pl-10 appearance-none cursor-pointer`}
+                    errors.wasteCategory ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-emerald-500'
+                  } text-slate-900 text-sm rounded-xl focus:ring-2 focus:outline-none p-3 pl-10 appearance-none cursor-pointer font-medium`}
                 >
-                  <option value="">-- Select Hazard Category --</option>
-                  {HAZARD_CATEGORIES.map((cat) => (
+                  <option value="">-- Select Waste Hazard Category --</option>
+                  {CATEGORY_OPTIONS.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
                     </option>
                   ))}
                 </select>
-                <Flame className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+                <Layers className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
               </div>
-              {errors.hazardCategory && (
-                <p className="text-red-500 text-xs font-medium mt-1">{errors.hazardCategory.message}</p>
+              {errors.wasteCategory && (
+                <p className="text-red-500 text-xs font-semibold mt-1">{errors.wasteCategory.message}</p>
               )}
             </div>
           </div>
 
-          {/* Field 5: Description */}
+          {/* Input 5: Description */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Detailed Incident Description (Min 10 chars)
+              Description
             </label>
             <div className="relative">
               <textarea
                 rows={4}
-                placeholder="Describe exact street location, landmark, volume of waste, or blockage details..."
+                placeholder="Describe exact street location, landmark, or blockage details (minimum 10 characters)..."
                 {...register('description')}
                 className={`w-full bg-slate-50 border ${
                   errors.description ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-emerald-500'
-                } text-slate-800 text-sm rounded-lg focus:ring-2 focus:outline-none p-3 pl-10`}
+                } text-slate-900 text-sm rounded-xl focus:ring-2 focus:outline-none p-3 pl-10`}
               />
               <FileText className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
             </div>
             {errors.description && (
-              <p className="text-red-500 text-xs font-medium mt-1">{errors.description.message}</p>
+              <p className="text-red-500 text-xs font-semibold mt-1">{errors.description.message}</p>
             )}
           </div>
 
@@ -310,57 +282,67 @@ export default function ReportForm() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             <Send className="h-5 w-5" />
-            <span>{isSubmitting ? 'Submitting Complaint to Council...' : 'Submit Official Report'}</span>
+            <span>{isSubmitting ? 'Submitting Report...' : 'Submit Incident Report'}</span>
           </button>
         </form>
       </div>
 
-      {/* Active Complaints Feed */}
-      <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+      {/* Live Feed UI */}
+      <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-emerald-600" />
-            <h2 className="text-xl font-bold text-slate-900">Active Complaints Feed</h2>
+            <h2 className="text-xl font-bold text-slate-900">Active Complaints (Live Feed)</h2>
           </div>
-          <span className="bg-slate-100 text-slate-700 text-xs font-bold px-3 py-1 rounded-full border border-slate-300">
-            {activeComplaints.length} Live Incident{activeComplaints.length !== 1 ? 's' : ''}
+          <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full border border-emerald-300">
+            {activeComplaints.length} Reported
           </span>
         </div>
 
-        <div className="space-y-4">
-          {activeComplaints.map((complaint) => (
-            <div
-              key={complaint.id}
-              className="bg-slate-50 rounded-xl p-5 border border-slate-200 hover:border-emerald-300 transition-all space-y-3"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/70 pb-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-900 text-sm">{complaint.hazardCategory}</span>
-                  <span className="bg-amber-100 text-amber-900 text-xs px-2 py-0.5 rounded font-semibold border border-amber-300">
-                    {complaint.wardName}
+        {activeComplaints.length === 0 ? (
+          <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300">
+            <p className="text-slate-500 font-medium text-sm">
+              No new reports submitted in this session.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {activeComplaints.map((complaint) => (
+              <div
+                key={complaint.id}
+                className="bg-slate-50 rounded-xl p-5 border border-slate-200 space-y-3 shadow-sm hover:border-emerald-300 transition-all"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 text-base">{complaint.ward}</span>
+                    <span
+                      className={`text-xs font-bold px-2.5 py-0.5 rounded-md shadow-sm ${getBadgeColorClass(
+                        complaint.wasteCategory
+                      )}`}
+                    >
+                      {complaint.wasteCategory}
+                    </span>
+                  </div>
+                  <span className="text-xs text-emerald-700 font-bold bg-emerald-100 px-2.5 py-0.5 rounded-full self-start sm:self-auto border border-emerald-300">
+                    {complaint.timestampText}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-slate-500">
-                  <span>Reporter: {complaint.reporterName} ({complaint.mobileNumber})</span>
-                  <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">
-                    {complaint.status || 'Active'}
-                  </span>
+
+                <p className="text-sm text-slate-700 leading-relaxed font-normal">
+                  {complaint.description}
+                </p>
+
+                <div className="flex justify-between items-center text-xs text-slate-500 pt-1 border-t border-slate-200/50">
+                  <span>Reporter: <strong className="text-slate-700">{complaint.reporterName}</strong></span>
+                  <span className="font-mono text-[11px] text-slate-400">Mobile: {complaint.mobileNumber}</span>
                 </div>
               </div>
-
-              <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-                {complaint.description}
-              </p>
-
-              <div className="text-[11px] text-slate-400 text-right">
-                Logged: {new Date(complaint.createdAt).toLocaleString()}
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
